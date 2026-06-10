@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "package": "com.quicktotem.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [],
+  "client": [
+    "InventoryScreenMixin",
+    "AbstractContainerScreenAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
