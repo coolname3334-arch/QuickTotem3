@@ -3,7 +3,9 @@ package com.quicktotem.mixin;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.network.protocol.game.ServerboundContainerClickPacket;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ItemStack;
@@ -12,6 +14,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.util.HashMap;
 import java.util.List;
 
 @Mixin(InventoryScreen.class)
@@ -21,6 +24,7 @@ public abstract class InventoryScreenMixin {
     private void quicktotem_keyPressed(int keyCode, int scanCode, int modifiers, CallbackInfoReturnable<Boolean> cir) {
         Minecraft mc = Minecraft.getInstance();
 
+        // Check offhand key - in 26.1, KeyMapping#matches takes keyCode and scanCode
         if (!mc.options.keySwapOffhand.matches(keyCode, scanCode)) {
             return;
         }
@@ -32,7 +36,6 @@ public abstract class InventoryScreenMixin {
 
         final int OFFHAND_SLOT = 45;
         if (OFFHAND_SLOT >= slots.size()) return;
-
         if (!slots.get(OFFHAND_SLOT).getItem().isEmpty()) return;
 
         double mouseX = accessor.getMouseX();
@@ -45,8 +48,7 @@ public abstract class InventoryScreenMixin {
 
         for (Slot slot : slots) {
             if (slot.index == OFFHAND_SLOT) continue;
-            ItemStack stack = slot.getItem();
-            if (!stack.is(Items.TOTEM_OF_UNDYING)) continue;
+            if (!slot.getItem().is(Items.TOTEM_OF_UNDYING)) continue;
 
             double cx = guiLeft + slot.x + 8;
             double cy = guiTop + slot.y + 8;
@@ -60,14 +62,16 @@ public abstract class InventoryScreenMixin {
 
         if (closest == null) return;
 
-        // SWAP click type = 2, button 40 = offhand
-        mc.gameMode.handleInventoryMouseClick(
+        // Send swap packet directly — button 40 = offhand, type 2 = SWAP
+        mc.getConnection().send(new ServerboundContainerClickPacket(
             menu.containerId,
+            menu.getStateId(),
             closest.index,
             40,
-            net.minecraft.world.inventory.ClickType.valueOf("SWAP"),
-            mc.player
-        );
+            ClickType.SWAP,
+            closest.getItem().copy(),
+            new HashMap<>()
+        ));
 
         cir.setReturnValue(true);
     }
